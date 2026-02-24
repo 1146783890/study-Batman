@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>学习系统</title>
+<head>
+    <meta charset="UTF-8">
+    <!-- 核心：适配手机屏幕（你原有代码已包含，保留即可） -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 网页标题（显示在浏览器标签/APP图标下方） -->
+    <title>学习日程管理</title>
+    
+    <!-- 1. 添加APP图标（关键：替换icon.png为你的图标路径） -->
+    <!-- 通用图标（Android/浏览器） -->
+    <link rel="icon" href="icon.png" sizes="192x192">
+    <!-- iOS专用图标（添加到主屏幕时显示） -->
+        <!-- 开启全屏模式（无浏览器地址栏） -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <!-- 状态栏样式（black=黑色背景，white=白色） -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <!-- iOS主屏幕APP名称（可自定义，比如“学习系统”） -->
+    <meta name="apple-mobile-web-app-title" content="学习系统">
+</head>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto}
+:root{--bg:#f7f8fa;--card:#fff;--text:#222;--text2:#666;--border:#eee;--main:#4285f4;--done:#73d673;--del:#ff4d4f;--gray:#999;--lightgray:#eee;--overdue:#ff4d4f}
+.dark{--bg:#121212;--card:#1e1e1e;--text:#f0f0f0;--text2:#aaa;--border:#333;--gray:#666;--lightgray:#444;--overdue:#ff6b6b}
+body{background:var(--bg);color:var(--text);max-width:900px;margin:0 auto;padding:16px}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.title{font-size:20px;font-weight:600}
+.btn-theme{padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer}
+.tabs{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-bottom:14px}
+.tab{padding:8px 2px;text-align:center;background:var(--card);border-radius:8px;font-size:13px;cursor:pointer}
+.tab.active{background:var(--main);color:#fff}
+.page{display:none}
+.page.show{display:block}
+.card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:12px}
+input,button,textarea,select{width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);margin-bottom:8px}
+textarea{min-height:80px}
+button{background:var(--main);color:#fff;font-weight:500;cursor:pointer}
+.flex{display:flex;gap:8px}
+.flex>*{flex:1}
+.item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)}
+.item-left{display:flex;align-items:center;flex:1}
+.item input[type=checkbox]{width:18px;height:18px;margin-right:8px}
+.item-text{flex:1}
+.item-text.done{text-decoration:line-through;color:var(--text2)}
+.item-text.overdue{color:var(--overdue);font-weight:500}
+.item-del{color:var(--del);font-size:14px;cursor:pointer;width:auto;white-space:nowrap;margin-left:8px}
+/* 日历网格 */
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:10px}
+.cal-day{background:var(--card);border-radius:8px;padding:8px;font-size:14px;min-height:120px;position:relative;transition:0.1s}
+.cal-title{font-weight:bold;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--lightgray);display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;}
+.cal-title:hover{opacity:0.8}
+.cal-streak{font-size:11px;color:var(--main);background:rgba(66,133,244,0.1);padding:2px 6px;border-radius:4px;margin-left:4px;}
+/* 日历项基础样式 */
+.cal-item{font-size:13px;padding:2px 0;margin-bottom:4px;display:flex;align-items:center;width:100%;}
+.cal-item input[type=checkbox]{width:16px;height:16px;margin-right:6px;}
+.cal-item .done{text-decoration:line-through;color:var(--text2)}
+/* 折叠控制：只针对可折叠类别（生活、学习）添加折叠功能 */
+.cal-day.collapsed .cal-item.foldable{display:none;}
+/* 运动、复习计划始终显示（不受折叠影响）*/
+.cal-item.always-show{display:flex !important;}
+/* 日期右上角小折叠图标 */
+.cal-toggle-indicator{font-size:12px;color:var(--gray);margin-left:5px;}
+/* 全局收起按钮 */
+.calendar-header-extra{display:flex;justify-content:flex-end;margin-bottom:8px;gap:6px;}
+.cal-collapse-btn{width:auto;padding:6px 12px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:20px;font-size:13px;cursor:pointer;}
+.cal-collapse-btn:hover{background:var(--lightgray);}
+/* 年月选择器 */
+.cal-select{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.cal-select select{margin:0;padding:6px 8px;height:36px;}
+.cal-select button{margin:0;padding:6px 12px;height:36px;}
+/* 成就徽章等保留原有样式 */
+.badge-box{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.badge{padding:6px 8px;border-radius:8px;font-size:14px;background:var(--main);color:#fff}
+.badge.locked{background:#ccc;color:#666}
+.upload-area{border:2px dashed var(--border);padding:20px;text-align:center;border-radius:12px;margin:10px 0}
+.ebb-btn-group{display:flex;gap:4px;}
+.ebb-btn{width:auto;padding:4px 8px;font-size:12px;margin:0;border-radius:4px;}
+.ebb-del-btn{background:var(--del);}
+.repeat-check{width:auto;height:18px;margin:0 6px 0 0;}
+.repeat-label{font-size:14px;color:var(--text2);align-self:center;}
+.timer-box{text-align:center;margin:16px 0;}
+.timer-display{font-size:40px;font-weight:700;margin:12px 0;letter-spacing:2px;}
+.timer-btns{display:flex;gap:10px;justify-content:center;margin:8px 0;}
+.timer-btns button{width:auto;padding:8px 20px;}
+.timer-reset{background:var(--del);}
+.tomato-box{text-align:center;margin:16px 0;}
+.tomato-display{font-size:40px;font-weight:700;margin:12px 0;letter-spacing:2px;}
+.tomato-status{font-size:16px;color:var(--main);margin-bottom:8px;}
+.tomato-btns{display:flex;gap:10px;justify-content:center;margin:8px 0;}
+.tomato-cycle{margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px;}
+.time-stat{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+.stat-item{display:flex;justify-content:space-between;padding:4px 0;font-size:14px;}
+.point-box{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.point-display{font-size:24px;font-weight:700;color:var(--main);}
+.share-box{margin-top:12px;}
+.share-preview{margin-top:12px;border:1px solid var(--border);border-radius:8px;padding:10px;background:var(--card);min-height:200px;}
+.setting-item{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.setting-item label{flex:1;font-size:14px;}
+.setting-item input,.setting-item select{flex:2;margin:0;padding:8px;}
+.streak-box{margin-top:12px;padding:10px;border-radius:8px;background:rgba(66,133,244,0.1);}
+.streak-title{font-size:16px;font-weight:600;margin-bottom:8px;color:var(--main);}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="title">学习系统</div>
+  <button class="btn-theme" onclick="toggleTheme()">深色模式</button>
+</div>
+<div class="tabs">
+  <div class="tab active" data-page="life">生活待办</div>
+  <div class="tab" data-page="study">学习日程</div>
+  <div class="tab" data-page="sport">运动打卡</div>
+  <div class="tab" data-page="ebb">复习计划</div>
+  <div class="tab" data-page="calendar">日历总览</div>
+  <div class="tab" data-page="badge">成就积分</div>
+  <div class="tab" data-page="tool">工具</div>
+  <div class="tab" data-page="settings">设置</div>
+</div>
+
+<!-- 生活待办：开始日期 + 截止时间 -->
+<div class="page show" id="life">
+  <div class="card">
+    <textarea id="lifeMulti" placeholder="多行输入，自动生成生活待办"></textarea>
+    <div class="flex">
+      <input type="date" id="lifeStartDate" placeholder="开始日期" value="">
+      <input type="datetime-local" id="lifeDeadline" placeholder="截止时间" value="">
+    </div>
+    <label class="repeat-label"><input type="checkbox" class="repeat-check" id="lifeRepeat"> 每天重复</label>
+    <button onclick="addLifeMulti()">✅ 一键生成</button>
+  </div>
+  <div class="card" id="lifeList"></div>
+</div>
+
+<!-- 学习日程：开始日期 + 截止时间 -->
+<div class="page" id="study">
+  <div class="card">
+    <textarea id="studyMulti" placeholder="粘贴计划，一键导入学习任务"></textarea>
+    <div class="flex">
+      <input type="date" id="studyStartDate" placeholder="开始日期" value="">
+      <input type="datetime-local" id="studyDeadline" placeholder="截止时间" value="">
+    </div>
+    <label class="repeat-label"><input type="checkbox" class="repeat-check" id="studyRepeat"> 每天重复</label>
+    <button onclick="addStudyMulti()">✅ 一键导入</button>
+    <div class="time-stat">
+      <h4>📊 学习时长统计</h4>
+      <div class="stat-item"><span>今日学习时长</span><span id="todayStudyTime">00:00:00</span></div>
+      <div class="stat-item"><span>本周学习时长</span><span id="weekStudyTime">00:00:00</span></div>
+      <div class="stat-item"><span>累计学习时长</span><span id="totalStudyTime">00:00:00</span></div>
+    </div>
+  </div>
+  <div class="card" id="studyList"></div>
+</div>
+
+<!-- 运动打卡 -->
+<div class="page" id="sport">
+  <div class="card">
+    <div class="flex">
+      <select id="sportType"><option>跑步</option><option>跳绳</option><option>拉伸</option><option>俯卧撑</option><option>仰卧起坐</option><option>篮球</option></select>
+      <input id="sportNum" placeholder="次数/分钟" type="number">
+    </div>
+    <div class="flex">
+      <input type="date" id="sportDate" value="">
+      <label class="repeat-label"><input type="checkbox" class="repeat-check" id="sportRepeat"> 每天重复</label>
+    </div>
+    <button onclick="addSport()">🏃 打卡运动</button>
+    <div class="streak-box">
+      <div class="streak-title">🏆 连续打卡统计</div>
+      <div class="streak-item"><span>连续学习打卡</span><span id="studyStreak">0 天</span></div>
+      <div class="streak-item"><span>连续运动打卡</span><span id="sportStreak">0 天</span></div>
+    </div>
+  </div>
+  <div class="card" id="sportList"></div>
+</div>
+
+<!-- 复习计划 -->
+<div class="page" id="ebb">
+  <div class="card">
+    <input id="ebbSubject" placeholder="科目：英语一/英语二/政治/专业课">
+    <input type="date" id="ebbDate">
+    <button onclick="createMultiEbb()">📅 生成该科目复习计划</button>
+  </div>
+  <div class="card" id="ebbBox"></div>
+</div>
+
+<!-- 日历总览（生活/学习可折叠，运动/复习始终显示） -->
+<div class="page" id="calendar">
+  <div class="card">
+    <div class="flex" style="justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <h3 style="margin:0;">🗓️ 日历</h3>
+      <div class="calendar-header-extra">
+        <button class="cal-collapse-btn" id="collapseAllBtn" onclick="toggleAllCollapse()">全部收起</button>
+      </div>
+    </div>
+    <div class="cal-select">
+      <select id="calYear"></select>
+      <select id="calMonth"></select>
+      <button onclick="renderCalendarBySelect()">查询</button>
+      <button onclick="renderCalendarToday()">回到今日</button>
+    </div>
+    <div class="calendar" id="calendarBox"></div>
+  </div>
+</div>
+
+<!-- 成就积分系统 -->
+<div class="page" id="badge">
+  <div class="card">
+    <h3>🏅 我的成就</h3>
+    <div class="point-box"><div><div>当前积分</div><div class="point-display" id="totalPoints">0</div></div><div><div>积分规则</div><div class="point-detail">完成待办+5 | 运动打卡+10 | 学习1小时+20 | 连续打卡+50</div></div></div>
+    <div class="badge-box" id="badgeBox"></div>
+    <div class="share-box"><h4>📤 数据分享</h4><button class="share-btn" onclick="generateShareImage('today')">生成今日数据图</button><button class="share-btn" onclick="generateShareImage('week')">生成本周数据图</button><button class="share-btn" onclick="copyShareImage()">复制图片</button><button class="share-btn" onclick="saveShareImage()">保存图片</button><div class="share-preview" id="sharePreview"></div></div>
+  </div>
+</div>
+
+<!-- 工具 -->
+<div class="page" id="tool">
+  <div class="card"><h3>⏱️ 专注计时</h3><div class="timer-box"><div class="timer-display" id="timerDisplay">00:00:00</div><div class="timer-btns"><button onclick="startTimer()">开始</button><button onclick="pauseTimer()">暂停</button><button class="timer-reset" onclick="resetTimer()">重置</button></div><div class="timer-task"><input type="text" id="timerTask" placeholder="输入当前专注任务"><button onclick="saveTimerRecord()">保存计时记录</button></div></div></div>
+  <div class="card"><h3>🍅 番茄钟</h3><div class="tomato-box"><div class="tomato-status" id="tomatoStatus">准备中：学习模式</div><div class="tomato-display" id="tomatoDisplay">50:00</div><div class="tomato-cycle"><span>循环次数：</span><input type="number" id="tomatoCycle" min="1" max="10" value="1"><span>次</span><label><input type="checkbox" id="tomatoAutoCycle" checked> 自动循环</label></div><div class="tomato-btns"><button onclick="startTomato()">开始番茄钟</button><button onclick="pauseTomato()">暂停</button><button class="timer-reset" onclick="resetTomato()">重置</button></div></div></div>
+  <div class="card"><h3>💾 数据备份与恢复</h3><button onclick="backupData()">备份数据</button><button onclick="restoreData()">恢复数据</button></div>
+  <div class="card"><h3>📁 文档上传</h3><div class="upload-area" id="dropArea">将文档拖拽到此处上传</div></div>
+  <div class="card"><button onclick="exportExcel()">导出表格</button><button onclick="clearAll()">清空数据</button></div>
+</div>
+
+<!-- 设置页面 -->
+<div class="page" id="settings">
+  <div class="card"><h3>⚙️ 基础设置</h3><div class="setting-item"><label>专注计时默认时长(分钟)</label><input type="number" id="settingTimerDefault" min="1" max="120" value="25"></div><div class="setting-item"><label>番茄钟学习时长(分钟)</label><input type="number" id="settingTomatoStudy" min="5" max="60" value="50"></div><div class="setting-item"><label>番茄钟休息时长(分钟)</label><input type="number" id="settingTomatoRest" min="1" max="30" value="10"></div><div class="setting-item"><label>每日学习目标(小时)</label><input type="number" id="settingStudyGoal" min="0.5" max="12" step="0.5" value="2"></div><div class="setting-item"><label>提醒方式</label><select id="settingReminder"><option value="alert">浏览器提示</option><option value="notification">桌面通知</option></select></div><button onclick="saveSettings()">保存设置</button><button onclick="resetSettings()">恢复默认</button></div>
+  <div class="card"><h3>📊 数据统计</h3><div class="stat-item"><span>总积分</span><span id="settingsTotalPoints">0</span></div><div class="stat-item"><span>已完成任务数</span><span id="settingsCompletedTasks">0</span></div><div class="stat-item"><span>最长连续学习天数</span><span id="settingsMaxStudyStreak">0</span></div><div class="stat-item"><span>最长连续运动天数</span><span id="settingsMaxSportStreak">0</span></div></div>
+</div>
+
+<script>
+// ================== 全局变量 ==================
+const STORAGE_KEYS = {
+  LIFE: 'life', STUDY: 'study', SPORT: 'sport', MEBB: 'mebb',
+  STUDY_TIME: 'studyTimeRecord', POINTS: 'pointsRecord',
+  SETTINGS: 'appSettings', STREAK: 'streakRecord', THEME: 'theme',
+  CAL_DONE: 'calendarDone', CAL_FOLD: 'calendarFold'
+};
+
+let state = {
+  currentCalYear: new Date().getFullYear(),
+  currentCalMonth: new Date().getMonth(),
+  timer: { interval: null, seconds: 0, running: false },
+  tomato: { interval: null, seconds: 0, running: false, isStudy: true, currentCycle: 0, totalCycle: 1 },
+  data: {
+    studyTime: JSON.parse(localStorage.getItem(STORAGE_KEYS.STUDY_TIME) || '[]'),
+    points: JSON.parse(localStorage.getItem(STORAGE_KEYS.POINTS) || '[]'),
+    streak: JSON.parse(localStorage.getItem(STORAGE_KEYS.STREAK) || '{"study":[],"sport":[],"maxStudy":0,"maxSport":0}'),
+    settings: JSON.parse(localStorage.getItem(STORAGE_KEYS.SETTINGS) || '{"timerDefault":25,"tomatoStudy":50,"tomatoRest":10,"studyGoal":2,"reminder":"alert"}'),
+    calDone: JSON.parse(localStorage.getItem(STORAGE_KEYS.CAL_DONE) || '{}'),
+    calFold: JSON.parse(localStorage.getItem(STORAGE_KEYS.CAL_FOLD) || '{}')
+  }
+};
+
+const storage = {
+  get: (key) => JSON.parse(localStorage.getItem(key) || '[]'),
+  set: (key, data) => localStorage.setItem(key, JSON.stringify(data)),
+  getToday: () => new Date().toISOString().split('T')[0],
+  formatTime: (seconds) => {
+    const h = Math.floor(seconds / 3600).toString().padStart(2,'0');
+    const m = Math.floor((seconds % 3600)/60).toString().padStart(2,'0');
+    const s = (seconds % 60).toString().padStart(2,'0');
+    return `${h}:${m}:${s}`;
+  },
+  formatDate: (date) => typeof date === 'string' ? date : date.toISOString().split('T')[0]
+};
+
+// ================== 初始化 ==================
+function initApp() {
+  if (localStorage.getItem(STORAGE_KEYS.THEME) === 'dark') document.body.classList.add('dark');
+  initTabSwitch();
+  renderLife(); renderStudy(); renderSport(); renderMultiEbb(); updateSettingsStats(); resetTomato();
+  initCalSelect(); renderCalendar(state.currentCalYear, state.currentCalMonth);
+}
+
+function initTabSwitch() {
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('show'));
+      tab.classList.add('active');
+      const pageId = tab.dataset.page;
+      document.getElementById(pageId).classList.add('show');
+      if (pageId === 'calendar') { initCalSelect(); renderCalendar(state.currentCalYear, state.currentCalMonth); }
+      if (pageId === 'study') calculateStudyTime();
+      if (pageId === 'badge') { updateSettingsStats(); checkBadge(); }
+      if (pageId === 'settings') initSettings();
+    });
+  });
+}
+
+function toggleTheme() {
+  document.body.classList.toggle('dark');
+  localStorage.setItem(STORAGE_KEYS.THEME, document.body.classList.contains('dark') ? 'dark' : 'light');
+}
+
+// ================== 设置 ==================
+function initSettings() {
+  const s = state.data.settings;
+  document.getElementById('settingTimerDefault').value = s.timerDefault;
+  document.getElementById('settingTomatoStudy').value = s.tomatoStudy;
+  document.getElementById('settingTomatoRest').value = s.tomatoRest;
+  document.getElementById('settingStudyGoal').value = s.studyGoal;
+  document.getElementById('settingReminder').value = s.reminder;
+  updateSettingsStats();
+}
+function saveSettings() {
+  state.data.settings = {
+    timerDefault: parseInt(document.getElementById('settingTimerDefault').value),
+    tomatoStudy: parseInt(document.getElementById('settingTomatoStudy').value),
+    tomatoRest: parseInt(document.getElementById('settingTomatoRest').value),
+    studyGoal: parseFloat(document.getElementById('settingStudyGoal').value),
+    reminder: document.getElementById('settingReminder').value
+  };
+  storage.set(STORAGE_KEYS.SETTINGS, state.data.settings);
+  resetTomato();
+  alert('设置保存成功！');
+  updateSettingsStats();
+}
+function resetSettings() {
+  state.data.settings = { timerDefault:25, tomatoStudy:50, tomatoRest:10, studyGoal:2, reminder:'alert' };
+  storage.set(STORAGE_KEYS.SETTINGS, state.data.settings);
+  initSettings(); resetTomato(); alert('已恢复默认设置！');
+}
+
+// ================== 积分/打卡 ==================
+function addPoints(type, points) {
+  state.data.points.push({ type, points, date: storage.getToday(), time: new Date().toLocaleString() });
+  storage.set(STORAGE_KEYS.POINTS, state.data.points);
+  updateSettingsStats();
+}
+function recordStreak(type) {
+  const today = storage.getToday();
+  if (!state.data.streak[type]) state.data.streak[type] = [];
+  if (!state.data.streak[type].includes(today)) {
+    state.data.streak[type].push(today);
+    state.data.streak[type].sort();
+    let maxStreak = 1, cur = 1;
+    for (let i=1; i<state.data.streak[type].length; i++) {
+      const prev = new Date(state.data.streak[type][i-1]);
+      const curr = new Date(state.data.streak[type][i]);
+      if ((curr - prev) / (86400000) === 1) { cur++; maxStreak = Math.max(maxStreak, cur); }
+      else cur = 1;
+    }
+    state.data.streak[`max${type.charAt(0).toUpperCase()+type.slice(1)}`] = maxStreak;
+    storage.set(STORAGE_KEYS.STREAK, state.data.streak);
+    const curStreak = calculateCurrentStreak(type);
+    if (curStreak % 7 === 0 && curStreak > 0) addPoints(`连续${type}打卡${curStreak}天`, 50);
+  }
+  updateSettingsStats();
+}
+function calculateCurrentStreak(type) {
+  const arr = state.data.streak[type] || [];
+  if (!arr.length) return 0;
+  const sorted = [...arr].sort((a,b)=>new Date(b)-new Date(a));
+  let streak = 0, today = new Date();
+  for (let i=0; i<sorted.length; i++) {
+    const d = new Date(sorted[i]);
+    const diff = Math.floor((today - d) / 86400000);
+    if (diff === streak) streak++;
+    else break;
+  }
+  return streak;
+}
+function isOverdue(deadline) {
+  return deadline ? new Date() > new Date(deadline) : false;
+}
+function updateSettingsStats() {
+  const total = state.data.points.reduce((s,i)=>s+i.points,0);
+  document.getElementById('totalPoints') && (document.getElementById('totalPoints').textContent = total);
+  document.getElementById('settingsTotalPoints') && (document.getElementById('settingsTotalPoints').textContent = total);
+  const lifeDone = storage.get(STORAGE_KEYS.LIFE).filter(i=>i.done).length;
+  const studyDone = storage.get(STORAGE_KEYS.STUDY).filter(i=>i.done).length;
+  document.getElementById('settingsCompletedTasks') && (document.getElementById('settingsCompletedTasks').textContent = lifeDone+studyDone);
+  document.getElementById('settingsMaxStudyStreak') && (document.getElementById('settingsMaxStudyStreak').textContent = (state.data.streak.maxStudy||0)+'天');
+  document.getElementById('settingsMaxSportStreak') && (document.getElementById('settingsMaxSportStreak').textContent = (state.data.streak.maxSport||0)+'天');
+  document.getElementById('studyStreak') && (document.getElementById('studyStreak').textContent = calculateCurrentStreak('study')+'天');
+  document.getElementById('sportStreak') && (document.getElementById('sportStreak').textContent = calculateCurrentStreak('sport')+'天');
+}
+
+// ================== 生活待办 ==================
+function addLifeMulti() {
+  const text = document.getElementById('lifeMulti').value.trim();
+  const startDate = document.getElementById('lifeStartDate').value || storage.getToday();
+  const deadline = document.getElementById('lifeDeadline').value;
+  const repeat = document.getElementById('lifeRepeat').checked;
+  if (!text) return;
+  const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
+  const list = storage.get(STORAGE_KEYS.LIFE);
+  lines.forEach(line => {
+    if (!list.some(i=>i.text===line && i.startDate===startDate))
+      list.push({ startDate, text: line, done: false, repeat, deadline });
+  });
+  storage.set(STORAGE_KEYS.LIFE, list);
+  document.getElementById('lifeMulti').value = '';
+  document.getElementById('lifeDeadline').value = '';
+  document.getElementById('lifeRepeat').checked = false;
+  renderLife();
+  if (document.getElementById('calendar').classList.contains('show')) renderCalendar(state.currentCalYear, state.currentCalMonth);
+  checkBadge();
+}
+function renderLife() {
+  const list = storage.get(STORAGE_KEYS.LIFE);
+  const container = document.getElementById('lifeList');
+  container.innerHTML = '';
+  list.forEach((item, idx) => {
+    const overdue = isOverdue(item.deadline) && !item.done;
+    const repeatText = item.repeat ? '[每日] ' : '';
+    const startText = item.startDate ? `开始:${item.startDate} ` : '';
+    const deadlineText = item.deadline ? `| 截止:${item.deadline.replace('T',' ')}` : '';
+    const div = document.createElement('div'); div.className = 'item';
+    div.innerHTML = `<div class="item-left"><input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleLife(${idx})"><div class="item-text ${item.done?'done':''} ${overdue?'overdue':''}">${repeatText}${startText}${deadlineText} | ${item.text}${overdue?' ⚠️逾期':''}</div></div><div class="item-del" onclick="delLife(${idx})">删除</div>`;
+    container.appendChild(div);
+  });
+}
+function toggleLife(idx) { let l=storage.get(STORAGE_KEYS.LIFE); l[idx].done=!l[idx].done; storage.set(STORAGE_KEYS.LIFE,l); renderLife(); if(document.getElementById('calendar').classList.contains('show')) renderCalendar(state.currentCalYear, state.currentCalMonth); }
+function delLife(idx) { let l=storage.get(STORAGE_KEYS.LIFE); l.splice(idx,1); storage.set(STORAGE_KEYS.LIFE,l); renderLife(); if(document.getElementById('calendar').classList.contains('show')) renderCalendar(state.currentCalYear, state.currentCalMonth); }
+
+// ================== 学习日程 ==================
+function addStudyMulti() {
+  const text = document.getElementById('studyMulti').value.trim();
+  const startDate = document.getElementById('studyStartDate').value || storage.getToday();
+  const deadline = document.getElementById('studyDeadline').value;
+  const repeat = document.getElementById('studyRepeat').checked;
+  if (!text) return;
+  const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
+  const list = storage.get(STORAGE_KEYS.STUDY);
+  lines.forEach(line => {
+    const timeMatch = line.match(/(\d{1,2}:\d{2})/)?.[1] || '';
+    const content = timeMatch ? line.replace(timeMatch,'').trim() : line;
+    if (!list.some(i=>i.content===content && i.startDate===startDate))
+      list.push({ startDate, time: timeMatch, content, done: false, repeat, deadline });
+  });
+  storage.set(STORAGE_KEYS.STUDY, list);
+  document.getElementById('studyMulti').value = '';
+  document.getElementById('studyDeadline').value = '';
+  document.getElementById('studyRepeat').checked = false;
+  renderStudy();
+  if (document.getElementById('calendar').classList.contains('show')) renderCalendar(state.currentCalYear, state.currentCalMonth);
+  checkBadge();
+}
+function renderStudy() {
+  const list = storage.get(STORAGE_KEYS.STUDY);
+  const container = document.getElementById('studyList');
+  container.innerHTML = '';
+  list.forEach((item, idx) => {
+    const overdue = isOverdue(item.deadline) && !item.done;
+    const repeatText = item.repeat ? '[每日] ' : '';
+    const startText = item.startDate ? `开始:${item.startDate} ` : '';
+    const timeText = item.time ? `${item.time} ` : '';
+    const deadlineText = item.deadline ? `| 截止:${item.deadline.replace('T',' ')}` : '';
+    const div = document.createElement('div'); div.className = 'item';
+    div.innerHTML = `<div class="item-left"><input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleStudy(${idx})"><div class="item-text ${item.done?'done':''} ${overdue?'overdue':''}">${repeatText}${startText} | ${timeText}${item.content}${deadlineText}${overdue?' ⚠️逾期':''}</div></div><div class="item-del" onclick="delStudy(${idx})">删除</div>`;
+    container.appendChild(div);
+  });
+  calculateStudyTime();
+}
+function toggleStudy(idx) { let l=storage.get(STORAGE_KEYS.STUDY); l[idx].done=!l[idx].done; storage.set(STORAGE_KEYS.STUDY,l); renderStudy(); if(document.getElementById('calendar').classList.contains('show')) renderCalendar(state.currentCalYear, state.currentCalMonth); }
+function delStudy(idx) { let l=storage.get(STORAGE_KEYS.STUDY); l.splice(idx,1); storage.set(STORAGE_KEYS.STUDY,l); renderStudy(); if(document.getElementById('calendar').classList.contains('show')) renderCalendar(state.currentCalYear, state.currentCalMonth); }
+
+// ================== 运动打卡 ==================
+function addSport() {
+  const type = document.getElementById('sportType').value;
+  const num = document.getElementById('sportNum').value;
+  const date = document.getElementById('sportDate').value || storage.getToday();
+  const repeat = document.getElementById('sportRepeat').checked;
+  if (!num) return alert('请输入次数/分钟');
+  const list = storage.get(STORAGE_KEYS.SPORT);
+  list.push({ date, type, num, repeat });
+  storage.set(STORAGE_KEYS.SPORT, list);
+  document.getElementById('sportNum').value = '';
+  document.getElementById('sportRepeat').checked = false;
+  renderSport();
+  if (document.getElementById('calendar').classList.contains('show')) renderCalendar(state.currentCalYear, state.currentCalMonth);
+}
+function renderSport() {
+  const list = storage.get(STORAGE_KEYS.SPORT);
+  const container = document.getElementById('sportList');
+  container.innerHTML = '';
+  list.forEach((item, idx) => {
+    const repeatText = item.repeat ? '[每日] ' : '';
+    const div = document.createElement('div'); div.className = 'item';
+    div.innerHTML = `<div class="item-left">${repeatText}${item.date}｜${item.type} × ${item.num}</div><div class="item-del" onclick="delSport(${idx})">删除</div>`;
+    container.appendChild(div);
+  });
+}
+function delSport(idx) { let l=storage.get(STORAGE_KEYS.SPORT); l.splice(idx,1); storage.set(STORAGE_KEYS.SPORT,l); renderSport(); if(document.getElementById('calendar').classList.contains('show')) renderCalendar(state.currentCalYear, state.currentCalMonth); }
+
+// ================== 复习计划 ==================
+function createMultiEbb() {
+  const subject = document.getElementById('ebbSubject').value.trim();
+  const startDate = document.getElementById('ebbDate').value;
+  if (!subject || !startDate) return alert('请填写科目与日期');
+  const intervals = [0,1,3,6,14,29];
+  const list = storage.get(STORAGE_KEYS.MEBB);
+  intervals.forEach(offset => {
+    const d = new Date(startDate); d.setDate(d.getDate()+offset);
+    list.push({ type:'ebb', subject, date: d.toISOString().split('T')[0] });
+  });
+  storage.set(STORAGE_KEYS.MEBB, list);
+  renderMultiEbb();
+  if (document.getElementById('calendar').classList.contains('show')) renderCalendar(state.currentCalYear, state.currentCalMonth);
+}
+function renderMultiEbb() {
+  const list = storage.get(STORAGE_KEYS.MEBB);
+  const container = document.getElementById('ebbBox');
+  container.innerHTML = '<h4>复习计划列表</h4>';
+  const grouped = {};
+  list.forEach((item, idx) => {
+    if (!grouped[item.subject]) grouped[item.subject] = { list: [], idxs: [] };
+    grouped[item.subject].list.push(item.date);
+    grouped[item.subject].idxs.push(idx);
+  });
+  for (let sub in grouped) {
+    grouped[sub].list.sort();
+    const card = document.createElement('div'); card.className = 'card';
+    let html = `<div class="flex"><strong>${sub}</strong><div class="ebb-btn-group"><button class="ebb-btn" onclick="extendEbb30Days('${sub}')">+延长30天</button></div></div>`;
+    grouped[sub].list.forEach((date, i) => {
+      const idx = grouped[sub].idxs[i];
+      html += `<div class="item"><div class="item-left">${date}</div><div class="ebb-btn-group"><button class="ebb-btn ebb-del-btn" onclick="delEbb(${idx})">删除</button></div></div>`;
+    });
+    card.innerHTML = html;
+    container.appendChild(card);
+  }
+}
+function extendEbb30Days(subject) {
+  const list = storage.get(STORAGE_KEYS.MEBB);
+  const subItems = list.filter(i=>i.subject===subject).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  if (!subItems.length) return alert('无计划');
+  const last = new Date(subItems[subItems.length-1].date);
+  last.setDate(last.getDate()+30);
+  list.push({ type:'ebb', subject, date: last.toISOString().split('T')[0] });
+  storage.set(STORAGE_KEYS.MEBB, list);
+  renderMultiEbb();
+  if (document.getElementById('calendar').classList.contains('show')) renderCalendar(state.currentCalYear, state.currentCalMonth);
+}
+function delEbb(idx) { let l=storage.get(STORAGE_KEYS.MEBB); l.splice(idx,1); storage.set(STORAGE_KEYS.MEBB,l); renderMultiEbb(); if(document.getElementById('calendar').classList.contains('show')) renderCalendar(state.currentCalYear, state.currentCalMonth); }
+
+// ================== 日历核心（生活/学习可折叠，运动/复习始终显示）==================
+function initCalSelect() {
+  const yS = document.getElementById('calYear'), mS = document.getElementById('calMonth');
+  const now = new Date(), curY = now.getFullYear();
+  yS.innerHTML = ''; mS.innerHTML = '';
+  for (let y = curY-5; y <= curY+5; y++) {
+    let opt = document.createElement('option'); opt.value = y; opt.textContent = y+'年';
+    if (y === state.currentCalYear) opt.selected = true;
+    yS.appendChild(opt);
+  }
+  for (let m = 0; m < 12; m++) {
+    let opt = document.createElement('option'); opt.value = m; opt.textContent = (m+1)+'月';
+    if (m === state.currentCalMonth) opt.selected = true;
+    mS.appendChild(opt);
+  }
+}
+
+function renderCalendarBySelect() {
+  state.currentCalYear = parseInt(document.getElementById('calYear').value);
+  state.currentCalMonth = parseInt(document.getElementById('calMonth').value);
+  renderCalendar(state.currentCalYear, state.currentCalMonth);
+}
+function renderCalendarToday() {
+  const n = new Date();
+  state.currentCalYear = n.getFullYear(); state.currentCalMonth = n.getMonth();
+  initCalSelect();
+  renderCalendar(state.currentCalYear, state.currentCalMonth);
+}
+
+function toggleDateFold(dateStr, event) {
+  if (event) event.stopPropagation();
+  state.data.calFold[dateStr] = !state.data.calFold[dateStr];
+  localStorage.setItem(STORAGE_KEYS.CAL_FOLD, JSON.stringify(state.data.calFold));
+  renderCalendar(state.currentCalYear, state.currentCalMonth);
+}
+
+function toggleAllCollapse() {
+  const anyCollapsed = Object.values(state.data.calFold).some(v=>v===true);
+  const target = !anyCollapsed;
+  const year = state.currentCalYear, month = state.currentCalMonth;
+  const lastDay = new Date(year, month+1, 0).getDate();
+  for (let d=1; d<=lastDay; d++) {
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    state.data.calFold[dateStr] = target;
+  }
+  localStorage.setItem(STORAGE_KEYS.CAL_FOLD, JSON.stringify(state.data.calFold));
+  document.getElementById('collapseAllBtn').textContent = target ? '全部展开' : '全部收起';
+  renderCalendar(year, month);
+}
+
+function toggleCalDone(key) {
+  state.data.calDone[key] = !state.data.calDone[key];
+  storage.set(STORAGE_KEYS.CAL_DONE, state.data.calDone);
+  renderCalendar(state.currentCalYear, state.currentCalMonth);
+}
+
+// 判断日期是否在任务的有效期内（开始日期 <= 当前日期 <= 截止日期）
+function isWithinRange(dateStr, startDate, deadline) {
+  const current = new Date(dateStr);
+  const start = new Date(startDate);
+  current.setHours(0,0,0,0);
+  start.setHours(0,0,0,0);
+  if (current < start) return false;
+  if (deadline) {
+    const end = new Date(deadline);
+    end.setHours(23,59,59,999);
+    if (current > end) return false;
+  }
+  return true;
+}
+
+function renderCalendar(year, month) {
+  const calendarBox = document.getElementById('calendarBox');
+  calendarBox.innerHTML = '';
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month+1, 0);
+  const firstDayWeek = firstDay.getDay() || 7;
+  const daysInMonth = lastDay.getDate();
+
+  const lifeList = storage.get(STORAGE_KEYS.LIFE);
+  const studyList = storage.get(STORAGE_KEYS.STUDY);
+  const sportList = storage.get(STORAGE_KEYS.SPORT);
+  const ebbList = storage.get(STORAGE_KEYS.MEBB);
+
+  for (let i=1; i<firstDayWeek; i++) {
+    calendarBox.appendChild(document.createElement('div')).className = 'cal-day';
+  }
+
+  for (let day=1; day<=daysInMonth; day++) {
+    const currentDate = new Date(year, month, day);
+    const dateStr = storage.formatDate(currentDate);
+    const dayDiv = document.createElement('div');
+    dayDiv.className = 'cal-day';
+    if (state.data.calFold[dateStr]) dayDiv.classList.add('collapsed');
+
+    const streakStudy = calculateCurrentStreak('study');
+    const streakSport = calculateCurrentStreak('sport');
+    const foldIndicator = state.data.calFold[dateStr] ? '🔽' : '🔼';
+    
+    dayDiv.innerHTML = `
+      <div class="cal-title" onclick="toggleDateFold('${dateStr}', event)">
+        ${month+1}月${day}日
+        <span class="cal-toggle-indicator">${foldIndicator}</span>
+        ${dateStr === storage.getToday() ? `<span class="cal-streak">学${streakStudy} | 运${streakSport}</span>` : ''}
+      </div>
+    `;
+
+    // 生活待办（可折叠：添加类 foldable）
+    lifeList.forEach((item, idx) => {
+      if (item.repeat || isWithinRange(dateStr, item.startDate, item.deadline)) {
+        const key = `life_${idx}_${dateStr}`;
+        const isDone = state.data.calDone[key] || item.done;
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'cal-item foldable';
+        itemDiv.innerHTML = `<input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleCalDone('${key}')"><span class="${isDone ? 'done' : (isOverdue(item.deadline) && !item.done ? 'overdue' : '')}">[生活] ${item.text}</span>`;
+        dayDiv.appendChild(itemDiv);
+      }
+    });
+
+    // 学习日程（可折叠）
+    studyList.forEach((item, idx) => {
+      if (item.repeat || isWithinRange(dateStr, item.startDate, item.deadline)) {
+        const key = `study_${idx}_${dateStr}`;
+        const isDone = state.data.calDone[key] || item.done;
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'cal-item foldable';
+        itemDiv.innerHTML = `<input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleCalDone('${key}')"><span class="${isDone ? 'done' : (isOverdue(item.deadline) && !item.done ? 'overdue' : '')}">[学习] ${item.content} ${item.time ? `(${item.time})` : ''}</span>`;
+        dayDiv.appendChild(itemDiv);
+      }
+    });
+
+    // 运动打卡（始终显示：添加类 always-show）
+    sportList.forEach((item, idx) => {
+      if (item.repeat || item.date === dateStr) {
+        const key = `sport_${idx}_${dateStr}`;
+        const isDone = state.data.calDone[key];
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'cal-item always-show';
+        itemDiv.innerHTML = `<input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleCalDone('${key}')"><span class="${isDone ? 'done' : ''}">[运动] ${item.type} × ${item.num}</span>`;
+        dayDiv.appendChild(itemDiv);
+      }
+    });
+
+    // 复习计划（始终显示）
+    ebbList.forEach((item, idx) => {
+      if (item.date === dateStr) {
+        const key = `ebb_${idx}_${dateStr}`;
+        const isDone = state.data.calDone[key];
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'cal-item always-show';
+        itemDiv.innerHTML = `<input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleCalDone('${key}')"><span class="${isDone ? 'done' : ''}">[复习] ${item.subject}</span>`;
+        dayDiv.appendChild(itemDiv);
+      }
+    });
+
+    calendarBox.appendChild(dayDiv);
+  }
+
+  const anyCollapsed = Object.values(state.data.calFold).some(v=>v===true);
+  document.getElementById('collapseAllBtn').textContent = anyCollapsed ? '全部展开' : '全部收起';
+}
+
+// ================== 其他工具函数 ==================
+function calculateStudyTime() {
+  const today = storage.getToday();
+  const todaySec = state.data.studyTime.filter(i=>i.date===today).reduce((s,i)=>s+i.seconds,0);
+  const weekSec = state.data.studyTime.filter(i=>new Date(i.date) >= new Date(new Date().setDate(new Date().getDate()-new Date().getDay()))).reduce((s,i)=>s+i.seconds,0);
+  const totalSec = state.data.studyTime.reduce((s,i)=>s+i.seconds,0);
+  document.getElementById('todayStudyTime').textContent = storage.formatTime(todaySec);
+  document.getElementById('weekStudyTime').textContent = storage.formatTime(weekSec);
+  document.getElementById('totalStudyTime').textContent = storage.formatTime(totalSec);
+}
+function checkBadge() {
+  const box = document.getElementById('badgeBox');
+  const total = state.data.points.reduce((s,i)=>s+i.points,0);
+  const doneLife = storage.get(STORAGE_KEYS.LIFE).filter(i=>i.done).length;
+  const doneStudy = storage.get(STORAGE_KEYS.STUDY).filter(i=>i.done).length;
+  const maxStudy = state.data.streak.maxStudy || 0;
+  const maxSport = state.data.streak.maxSport || 0;
+  const badges = [
+    { name:'积分100分', cond: total>=100 },
+    { name:'完成50个任务', cond: doneLife+doneStudy >= 50 },
+    { name:'连续学习7天', cond: maxStudy>=7 },
+    { name:'连续运动7天', cond: maxSport>=7 },
+    { name:'连续学习30天', cond: maxStudy>=30 },
+    { name:'连续运动30天', cond: maxSport>=30 },
+  ];
+  box.innerHTML = '';
+  badges.forEach(b => {
+    const d = document.createElement('div');
+    d.className = `badge ${b.cond ? '' : 'locked'}`;
+    d.textContent = b.name;
+    box.appendChild(d);
+  });
+}
+function resetTomato() {
+  const s = state.data.settings;
+  state.tomato = { interval:null, seconds: s.tomatoStudy*60, running:false, isStudy:true, currentCycle:0, totalCycle: parseInt(document.getElementById('tomatoCycle')?.value) || 1 };
+  document.getElementById('tomatoDisplay') && (document.getElementById('tomatoDisplay').textContent = `${s.tomatoStudy}:00`);
+  document.getElementById('tomatoStatus') && (document.getElementById('tomatoStatus').textContent = '准备中：学习模式');
+}
+function startTimer() { if(state.timer.running) return; state.timer.running=true; state.timer.interval=setInterval(()=>{ state.timer.seconds++; document.getElementById('timerDisplay').textContent=storage.formatTime(state.timer.seconds); },1000); }
+function pauseTimer() { clearInterval(state.timer.interval); state.timer.running=false; }
+function resetTimer() { pauseTimer(); state.timer.seconds=0; document.getElementById('timerDisplay').textContent='00:00:00'; }
+function saveTimerRecord() {
+  if(state.timer.seconds===0) return alert('无记录');
+  const task = document.getElementById('timerTask').value.trim() || '未命名';
+  state.data.studyTime.push({ date:storage.getToday(), task, seconds:state.timer.seconds, time:new Date().toLocaleString() });
+  storage.set(STORAGE_KEYS.STUDY_TIME, state.data.studyTime);
+  addPoints('学习计时', Math.floor(state.timer.seconds/3600)*20);
+  resetTimer(); calculateStudyTime(); alert('已保存');
+}
+function startTomato() { /* 简化版 */ alert('番茄钟演示'); }
+function pauseTomato() {}
+function generateShareImage() {}
+function copyShareImage() {}
+function saveShareImage() {}
+function backupData() { alert('备份演示'); }
+function restoreData() { alert('恢复演示'); }
+function exportExcel() { alert('导出演示'); }
+function clearAll() { if(confirm('确定清空所有数据？')) { Object.values(STORAGE_KEYS).forEach(k=>localStorage.removeItem(k)); location.reload(); } }
+
+window.onload = initApp;
+</script>
+</body>
+</html>
